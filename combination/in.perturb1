@@ -1,0 +1,38 @@
+# 2d min, for a small perturbance of atoms about equilibrium, while holding the indenter in place at its respective position
+
+dimension	2
+boundary	p s p
+
+atom_style	atomic
+
+# create geometry
+
+lattice		hex 0.9
+
+# LJ potentials
+
+pair_style	lj/cut 2.5
+
+read_data       modi.atoms
+
+# define groups
+
+region	        1 block INF INF INF 1.250000 INF INF
+group		lower region 1
+group		mobile subtract all lower
+set		group lower type 2
+
+fix		2 lower setforce 0.0 0.0 0.0
+
+#indenter position (line#27)
+variable        Q equal 7890
+variable	k equal 1000.0/xlat
+variable        y equal "13.000000 - v_Q*0.000100"
+fix		4 all indent $k sphere 20.000000 $y 0 5.000000
+fix_modify	4 energy yes
+fix		5 all enforce2d
+
+dump            2 all custom 10000 dump.forces id type fx fy fz
+
+min_style hftn
+minimize 1.0e-16 1.0e-15    1    1

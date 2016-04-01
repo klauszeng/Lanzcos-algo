@@ -1,0 +1,18 @@
+filename = "data.787" 
+dataRead = open(filename,'r')
+w = open("modi.atoms","w")
+vk = np.random.rand(840,3) * 0.01
+for i in range(22):
+    w.write(dataRead.readline())
+xa=[]
+num = []
+for i in range(840):
+    contents = dataRead.readline().split()
+    xa.append([float(contents[2]),float(contents[3]),float(contents[4])])
+    num.append([contents[0], contents[1]])
+matrix = np.add(vk,xa)
+for i in range(len(matrix)):
+    execute = num[i][0]+ ' ' + num[i][1] + ' ' + str(matrix[i][0]) + ' ' + str(matrix[i][1]) + ' ' + str(matrix[i][2]) + '\n'
+    w.write(execute)
+dataRead.close()
+w.close()
