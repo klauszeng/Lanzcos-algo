@@ -1,0 +1,13 @@
+This tutorial compares the grain-boundary behavior of Cu Sigma5 (310)  tilt grain boundary for three different potentials (EAM,COM,LJ).
+
+To see the effect the effect of temperature variable tmp can be varied and the potential energy profile throughout the grain-boundary structure can be seen.
+
+
+The .cfg files can be visualized/animated using atomeye software.(See atomeye manual how to generate movie).
+
+
+Usage: ./lmp_foo < in....
+
+References:1) https://icme.hpc.msstate.edu/mediawiki/index.php/LAMMPS_Help3
+2)Tschopp et al.,"Asymmetric tilt grain boundary structure and energy in copper and aluminium", Philosophical Magazine,Vol. 87, No. 25, 1 September 2007, 3871.
+

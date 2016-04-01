@@ -1,0 +1,231 @@
+LAMMPS (26 Nov 2014-ICMS)
+WARNING: OMP_NUM_THREADS environment is not set. (../comm.cpp:89)
+  using 1 OpenMP thread(s) per MPI task
+# LAMMPS Input File for Grain Boundaries
+# Mark Tschopp, Dec2009
+# This file will generate a single Sigma5(310) STGB
+
+# ---------- Initialize Simulation ---------------------
+clear
+WARNING: OMP_NUM_THREADS environment is not set. (../comm.cpp:89)
+  using 1 OpenMP thread(s) per MPI task
+units metal
+dimension 3
+boundary p p p
+atom_style atomic
+variable tmp equal 300.1
+
+# ---------- Create Atomistic Structure ---------------------
+lattice fcc 3.615
+Lattice spacing in x,y,z = 3.615 3.615 3.615
+## Box size determined by tilt angle##
+## Tschopp et al., Philosophical Magazine,Vol. 87, No. 25, 1 September 2007, 3871.##
+region whole block 0.000000 11.4316 -57.1582 57.1582  0.000000 3.6150000 units box
+create_box 2 whole
+Created orthogonal box = (0 -57.1582 0) to (11.4316 57.1582 3.615)
+  1 by 1 by 1 MPI processor grid
+region upper block INF INF 0.000000 57.1582 INF INF units box
+lattice fcc 3.615 orient x  0  3  1 orient y  0 -1  3 orient z  1  0  0
+Lattice spacing in x,y,z = 4.57265 4.57265 3.615
+create_atoms 1 region upper
+Created 200 atoms
+region lower block INF INF -57.1582 0.0 INF INF units box
+lattice fcc 3.615 orient x  0  3 -1 orient y  0  1  3 orient z  1  0  0
+Lattice spacing in x,y,z = 4.57265 4.57265 3.615
+create_atoms 2 region lower
+Created 202 atoms
+group upper type 1
+200 atoms in group upper
+group lower type 2
+202 atoms in group lower
+mass 1 63.5
+mass 2 63.5
+velocity        all create ${tmp} 277387
+velocity        all create 300.1 277387
+# ---------- Define Interatomic Potential ---------------------
+pair_style lj/cut 2.2277
+pair_coeff * * 0.45 0.45
+neighbor 2.0 bin
+neigh_modify delay 10 check yes
+
+# ---------- Displace atoms and delete overlapping atoms ---------------------
+displace_atoms upper move 0 0 0 units lattice
+delete_atoms overlap 0.35 lower upper
+Deleted 2 atoms, new total = 400
+
+# ---------- Define Settings ---------------------
+compute csym all centro/atom fcc
+compute eng all pe/atom
+compute eatoms all reduce sum c_eng
+
+# ---------- Run Minimization ---------------------
+reset_timestep 0
+thermo 10
+thermo_style custom step pe lx ly lz press pxx pyy pzz c_eatoms
+dump 		1 all cfg 25 dump.sig5_minimization_*.cfg mass type xs ys zs c_csym c_eng fx fy fz
+dump_modify     1 element Cu Cu
+min_style cg
+minimize 1e-15 1e-15 5000 5000
+WARNING: Resetting reneighboring criteria during minimization (../min.cpp:168)
+Memory usage per processor = 5.37734 Mbytes
+Step PotEng Lx Ly Lz Press Pxx Pyy Pzz eatoms 
+       0 -0.026685038      11.4316     114.3164        3.615    3485.5817    3254.8867    3613.8989    3587.9596 -0.026685038 
+      10         -1.8      11.4316     114.3164        3.615    3503.5505    3254.8867    3667.8052    3587.9596         -1.8 
+      13         -1.8      11.4316     114.3164        3.615    3503.6144    3254.8867    3667.9968    3587.9596         -1.8 
+
+Loop time of 0.00500107 on 1 procs for 13 steps with 400 atoms
+0.0% CPU use with 1 MPI tasks x 1 OpenMP threads
+
+Minimization stats:
+  Stopping criterion = energy tolerance
+  Energy initial, next-to-last, final = 
+      -0.0266850375896               -1.8               -1.8
+  Force two-norm initial, final = 0.0986641 1.62798e-012
+  Force max component initial, final = 0.0348897 8.13947e-013
+  Final line search alpha, max atom move = 1 8.13947e-013
+  Iterations, force evaluations = 13 41
+
+MPI task timings breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 0.0010002  | 0.0010002  | 0.0010002  |   0.0 | 20.00
+Neigh   | 0          | 0          | 0          |   0.0 |  0.00
+Comm    | 0.00099993 | 0.00099993 | 0.00099993 |   0.0 | 19.99
+Output  | 0          | 0          | 0          |   0.0 |  0.00
+Modify  | 0          | 0          | 0          |   0.0 |  0.00
+Other   |            | 0.003001   |            |       | 60.01
+
+Nlocal:    400 ave 400 max 400 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:    2216 ave 2216 max 2216 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:    3644 ave 3644 max 3644 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+FullNghs:  7288 ave 7288 max 7288 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 7288
+Ave neighs/atom = 18.22
+Neighbor list builds = 0
+Dangerous builds = 0
+undump 1
+
+# ---------- Run Minimization 2---------------------
+# Now allow the box to expand/contract perpendicular to the grain boundary
+reset_timestep 0
+thermo 10
+thermo_style custom step pe lx ly lz press pxx pyy pzz c_eatoms
+fix 1 all box/relax y 0 vmax 0.001
+fix 1a all npt temp ${tmp} ${tmp} 100.0 iso 0.0 0.0 1000.0
+fix 1a all npt temp 300.1 ${tmp} 100.0 iso 0.0 0.0 1000.0
+fix 1a all npt temp 300.1 300.1 100.0 iso 0.0 0.0 1000.0
+
+min_style cg
+minimize 1e-15 1e-15 5000 5000
+WARNING: Resetting reneighboring criteria during minimization (../min.cpp:168)
+Memory usage per processor = 4.09682 Mbytes
+Step PotEng Lx Ly Lz Press Pxx Pyy Pzz eatoms 
+       0         -1.8      11.4316     114.3164        3.615    3503.6144    3254.8867    3667.9968    3587.9596         -1.8 
+       1         -1.8      11.4316     114.3164        3.615    3503.6144    3254.8867    3667.9968    3587.9596         -1.8 
+
+Loop time of 0.00200009 on 1 procs for 1 steps with 400 atoms
+0.0% CPU use with 1 MPI tasks x 1 OpenMP threads
+
+Minimization stats:
+  Stopping criterion = energy tolerance
+  Energy initial, next-to-last, final = 
+                  -1.8               -1.8               -1.8
+  Force two-norm initial, final = 1.8201e-012 3.22026e-013
+  Force max component initial, final = 8.13947e-013 1.87182e-013
+  Final line search alpha, max atom move = 1 1.87182e-013
+  Iterations, force evaluations = 1 2
+
+MPI task timings breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 0          | 0          | 0          |   0.0 |  0.00
+Neigh   | 0          | 0          | 0          |   0.0 |  0.00
+Comm    | 0          | 0          | 0          |   0.0 |  0.00
+Output  | 0          | 0          | 0          |   0.0 |  0.00
+Modify  | 0          | 0          | 0          |   0.0 |  0.00
+Other   |            | 0.002      |            |       |100.00
+
+Nlocal:    400 ave 400 max 400 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:    2216 ave 2216 max 2216 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:    3644 ave 3644 max 3644 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+FullNghs:  7288 ave 7288 max 7288 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 7288
+Ave neighs/atom = 18.22
+Neighbor list builds = 0
+Dangerous builds = 0
+
+# ---------- Calculate GB Energy ---------------------
+variable minimumenergy equal -3.540000
+variable esum equal "v_minimumenergy * count(all)"
+variable xseng equal "c_eatoms - (v_minimumenergy * count(all))"
+variable gbarea equal "lx * lz * 2"
+variable gbe equal "(c_eatoms - (v_minimumenergy * count(all)))/v_gbarea"
+variable gbemJm2 equal ${gbe}*16021.7733
+variable gbemJm2 equal 17.1106109163229*16021.7733
+variable gbernd equal round(${gbemJm2})
+variable gbernd equal round(274142.329125831)
+print "GB energy is ${gbemJm2} mJ/m^2"
+GB energy is 274142.329125831 mJ/m^2
+
+# ---------- Dump data into Data file -------------
+reset_timestep 0
+dump 		1 all cfg 10000 dump.al_sig5_310_*.cfg mass type xs ys zs c_csym c_eng fx fy fz
+dump_modify     1 element Cu Cu
+minimize 1e-15 1e-15 5000 5000
+WARNING: Resetting reneighboring criteria during minimization (../min.cpp:168)
+Memory usage per processor = 5.37734 Mbytes
+Step PotEng Lx Ly Lz Press Pxx Pyy Pzz eatoms 
+       0         -1.8      11.4316     114.3164        3.615    3503.6144    3254.8867    3667.9968    3587.9596         -1.8 
+       1         -1.8      11.4316     114.3164        3.615    3503.6144    3254.8867    3667.9968    3587.9596         -1.8 
+
+Loop time of 0.00499988 on 1 procs for 1 steps with 400 atoms
+0.0% CPU use with 1 MPI tasks x 1 OpenMP threads
+
+Minimization stats:
+  Stopping criterion = energy tolerance
+  Energy initial, next-to-last, final = 
+                  -1.8               -1.8               -1.8
+  Force two-norm initial, final = 3.22026e-013 2.37958e-013
+  Force max component initial, final = 1.87182e-013 1.30359e-013
+  Final line search alpha, max atom move = 1 1.30359e-013
+  Iterations, force evaluations = 1 2
+
+MPI task timings breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 0          | 0          | 0          |   0.0 |  0.00
+Neigh   | 0          | 0          | 0          |   0.0 |  0.00
+Comm    | 0          | 0          | 0          |   0.0 |  0.00
+Output  | 0          | 0          | 0          |   0.0 |  0.00
+Modify  | 0          | 0          | 0          |   0.0 |  0.00
+Other   |            | 0.005      |            |       |100.00
+
+Nlocal:    400 ave 400 max 400 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:    2216 ave 2216 max 2216 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:    3644 ave 3644 max 3644 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+FullNghs:  7288 ave 7288 max 7288 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 7288
+Ave neighs/atom = 18.22
+Neighbor list builds = 0
+Dangerous builds = 0
+undump 1
+
+write_restart restart.al_sig5_310_stgb
+
+print "All done"
+All done
